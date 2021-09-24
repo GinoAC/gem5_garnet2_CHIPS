@@ -76,6 +76,9 @@ input_vals = {  "perlbench"     : "-I./lib checkspam.pl 2500 5 25 11 150 1 1 1 1
                                 "xalancbmk"     : "-v t5.xml xalanc.xsl",\
                                 "specrand_i"    : "1255432124 234923", 
                                 "specrand_f"    : "1255432124 234923"} 
+
+#substitute names for the SPEC workloads that do not conform to directory naming scheme....
+sub_bin = {"xalancbmk" : "Xalan"} 
 #launch form:
 #"EXE_PATH + run_dir_num[bench] + bench + run_subdir + bench + exe_subname " + input_vals[bench]
 
@@ -89,7 +92,10 @@ bm_number = 1
 for bm in args_in:
 
     #create command
-    cmd_t = EXE_PATH + run_dir_num[bm] + bm + run_subdir + bm + exe_subname
+    if bm in sub_bin.keys():
+        cmd_t = EXE_PATH + run_dir_num[bm] + bm + run_subdir + sub_bin[bm] + exe_subname
+    else:
+        cmd_t = EXE_PATH + run_dir_num[bm] + bm + run_subdir + bm + exe_subname
     if bm_number != len(args_in):
         cmds.append(cmd_t + ";")
     else:
