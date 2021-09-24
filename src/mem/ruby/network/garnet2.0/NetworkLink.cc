@@ -291,13 +291,13 @@ bool NetworkLink::apu_check(flit *t_flit){
     }
 
     int apu_policy_size = system->APU_Table.size();
-    
+
     if (requestor_id != -1) {
     //unsigned int request_type = (t_flit->get_msg_ptr())->getreqtype();
         DPRINTF(RubySNI, "TJ: Requestor:%d, Chiplet_ID:%d, Addr:%d, APU_size:%d\n", requestor_id, chiplet_id, addr_check, apu_policy_size);  
-        
+
         for (int i=0; i<apu_policy_size; i++){
-         
+
         //Read type - GETX and GETS
         //Write type -
             if ((addr_check>=system->APU_Table[i].apuaddr_start_page*4096)

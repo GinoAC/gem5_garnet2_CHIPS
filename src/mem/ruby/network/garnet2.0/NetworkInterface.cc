@@ -425,17 +425,17 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
 
     // Number of flits is dependent on the link bandwidth available.
     // This is expressed in terms of bytes/cycle or the flit size
-    
+
     //TJ: Make sure all the widths are 32-bit; Don't change the widths
     OutputPort *oPort = getOutportForVnet(vnet);
 
     assert(oPort);
     int num_flits = (int) ceil((double) m_net_ptr->MessageSizeType_to_int(
-        net_msg_ptr->getMessageSize())/oPort->bitWidth());
-    
+                net_msg_ptr->getMessageSize())/oPort->bitWidth());
+
     if(msg_ptr->getReqRespType() == 0){
         if( msg_ptr->getCohReqType() == 0 ||                                      
-            msg_ptr->getCohReqType() == 1){
+                msg_ptr->getCohReqType() == 1){
             //DPRINTF(RubySNI, "Net_Intf: id:%0d; Message obtained:%s\n", m_id, *msg_ptr);      
             if(num_flits>1){
                 assert(false);
@@ -444,10 +444,10 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
             } 
         }    
     }
-    
+
     DPRINTF(RubyNetwork, "Message Size:%d vnet:%d bitWidth:%d\n",
-    m_net_ptr->MessageSizeType_to_int(net_msg_ptr->getMessageSize()),
-    vnet, oPort->bitWidth());
+            m_net_ptr->MessageSizeType_to_int(net_msg_ptr->getMessageSize()),
+            vnet, oPort->bitWidth());
 
     // loop to convert all multicast messages into unicast messages
     for (int ctr = 0; ctr < dest_nodes.size(); ctr++) {
@@ -455,14 +455,14 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
         MsgPtr new_msg_ptr = msg_ptr->clone();
         NodeID destID = dest_nodes[ctr];
         DPRINTF(RubySNI, "Network Interface: Net_Intf: Iteration:%0d; destID;%0d\n", ctr, destID);       
-        
+
         //Default Status
         bool apu_result = true; 
         if(enSNI && msg_ptr->getReqRespType() == 0){
             //TODO: Only GETS added getCohReqType==0
             //Add GETX and INV as well 
             if(new_msg_ptr->getCohReqType()==0 ||
-               new_msg_ptr->getCohReqType()==1){
+                    new_msg_ptr->getCohReqType()==1){
                 DPRINTF(RubySNI, "Network Interface: NI_SNI: APU_CHECK Entered\n");    
                 apu_result = apu_check_NI(new_msg_ptr, destID); 
                 if(!apu_result){
@@ -475,7 +475,7 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
                 DPRINTF(RubySNI, "Network Interface: NI_SNI: APU_CHECK Done\n");    
             }
         }
-        
+
         int vc = -1; 
         if(apu_result){
             // this will return a free output virtual channel  
@@ -493,7 +493,7 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
             new_msg_ptr = modify_message_sni(new_msg_ptr, destID); 
             oPort = getOutportForVnet(4);
         }
-         
+
         if(!apu_result){                                                                            
             DPRINTF(RubySNI, "Network Interface: SNI Net_Intf: ctr:%0d; new_msg_ptr:%s; \n", ctr, *new_msg_ptr);      
         }
@@ -510,12 +510,12 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
             NetDest personal_dest;
             for (int m = 0; m < (int) MachineType_NUM; m++) {
                 if ((destID >= MachineType_base_number((MachineType) m)) &&
-                    destID < MachineType_base_number((MachineType) (m+1))) {
+                        destID < MachineType_base_number((MachineType) (m+1))) {
                     // calculating the NetDest associated with this destID
                     personal_dest.clear();
                     personal_dest.add((MachineID) {(MachineType) m, (destID -
-                        MachineType_base_number((MachineType) m))});
-                    
+                                MachineType_base_number((MachineType) m))});
+
                     //Added by TJ
                     if(apu_result){
                         new_net_msg_ptr->getDestination() = personal_dest; 
@@ -546,7 +546,7 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
         // Custom routing algorithms just need destID
 
         RouteInfo route;
-        
+
         //Added by TJ
         //If "false" then we are changing the coherent message
         route.vnet = vnet;   
@@ -565,48 +565,48 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
         // so that the first router increments it to 0
         route.hops_traversed = -1;
         DPRINTF(RubySNI, "Network Interface: NI_SNI: Route Info Done\n");   
-         
+
         /*
-        m_net_ptr->increment_injected_packets(vnet);
-        for (int i = 0; i < num_flits; i++) {
-            m_net_ptr->increment_injected_flits(vnet);
-            flit *fl = new flit(i, vc, vnet, route, num_flits, new_msg_ptr,
-                m_net_ptr->MessageSizeType_to_int(
-                net_msg_ptr->getMessageSize()),
-                oPort->bitWidth(), curTick());
+           m_net_ptr->increment_injected_packets(vnet);
+           for (int i = 0; i < num_flits; i++) {
+           m_net_ptr->increment_injected_flits(vnet);
+           flit *fl = new flit(i, vc, vnet, route, num_flits, new_msg_ptr,
+           m_net_ptr->MessageSizeType_to_int(
+           net_msg_ptr->getMessageSize()),
+           oPort->bitWidth(), curTick());
 
-            fl->set_src_delay(curTick() - (msg_ptr->getTime()));
-            m_ni_out_vcs[vc]->insert(fl);
-        }
+           fl->set_src_delay(curTick() - (msg_ptr->getTime()));
+           m_ni_out_vcs[vc]->insert(fl);
+           }
 
-        m_ni_out_vcs_enqueue_time[vc] = curTick();
-        m_out_vc_state[vc]->setState(ACTIVE_, curTick());
-        */
-        
+           m_ni_out_vcs_enqueue_time[vc] = curTick();
+           m_out_vc_state[vc]->setState(ACTIVE_, curTick());
+           */
+
         m_net_ptr->increment_injected_packets(vnet);                        
         for (int i = 0; i < num_flits; i++) {
             m_net_ptr->increment_injected_flits(vnet);
             flit *fl = new flit(i, vc, vnet, route, num_flits, new_msg_ptr,
-                m_net_ptr->MessageSizeType_to_int(
-                net_msg_ptr->getMessageSize()),
-                oPort->bitWidth(), curTick()+sni_packet_delay);
-                                                                            
+                    m_net_ptr->MessageSizeType_to_int(
+                        net_msg_ptr->getMessageSize()),
+                    oPort->bitWidth(), curTick()+sni_packet_delay);
+
             fl->set_src_delay((curTick()+sni_packet_delay) - (msg_ptr->getTime()));
             m_ni_out_vcs[vc]->insert(fl);
         }
-                                                                            
+
         m_ni_out_vcs_enqueue_time[vc] = curTick();
         m_out_vc_state[vc]->setState(ACTIVE_, curTick());
-        
-        
-        
-        
-        
+
+
+
+
+
         if(enSNI){
             DPRINTF(RubySNI, "Network Interface: NI_SNI: flitisize message done; VC:%0d\n", vc);  
             DPRINTF(RubySNI, "Network Interface: ********************************************************\n");         
         }
-         
+
     }
     DPRINTF(RubySNI, "Network Interface: **********Breaking Out of Network Interface**********************\n");          
     return true ;
