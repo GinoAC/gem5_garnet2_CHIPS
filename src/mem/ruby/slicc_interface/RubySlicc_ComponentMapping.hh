@@ -77,6 +77,27 @@ mapAddressToRange(Addr addr, MachineType type, int low_bit,
     return mach;
 }
 
+/////////////// TROJAN ////////////////////
+inline NodeID
+intToNodeID(int num)
+{
+  return NodeID(num);
+}
+
+inline bool
+test(int n)
+{
+    return false;
+}
+
+inline MachineID
+createMachineIDint(MachineType type, int id)
+{
+    MachineID mach = {type, NodeID(id)};
+    return mach;
+}
+/////////////// TROJAN ////////////////////
+
 inline NodeID
 machineIDToNodeID(MachineID machID)
 {
