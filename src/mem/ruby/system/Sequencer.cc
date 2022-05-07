@@ -253,11 +253,12 @@ Sequencer::recordMissLatency(SequencerRequest* srequest, bool llscSuccess,
 
         total_lat = Cycles(0);
     }
-
-    DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %s %d cycles\n",
-             curTick(), m_version, "Seq", llscSuccess ? "Done" : "SC_Failed",
-             "", "", printAddress(srequest->pkt->getAddr()), total_lat);
-
+  
+    //if(m_version == 8){
+    //  DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %s %d cycles\n",
+    //      curTick(), m_version, "Seq", llscSuccess ? "Done" : "SC_Failed",
+    //      "", "", printAddress(srequest->pkt->getAddr()), total_lat);
+    //}
     m_latencyHist.sample(total_lat);
     m_typeLatencyHist[type]->sample(total_lat);
 
@@ -640,11 +641,12 @@ Sequencer::issueRequest(PacketPtr pkt, RubyRequestType secondary_type)
                                       pkt->getSize(), pc, secondary_type,
                                       RubyAccessMode_Supervisor, pkt,
                                       PrefetchBit_No, proc_id, core_id);
-
-    DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\n",
-            curTick(), m_version, "Seq", "Begin", "", "",
-            printAddress(msg->getPhysicalAddress()),
-            RubyRequestType_to_string(secondary_type));
+    //if(m_version == 8){
+    //  DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\n",
+    //      curTick(), m_version, "Seq", "Begin", "", "",
+    //      printAddress(msg->getPhysicalAddress()),
+    //      RubyRequestType_to_string(secondary_type));
+    //}
 
     Tick latency = cyclesToTicks(
                         m_controller->mandatoryQueueLatency(secondary_type));

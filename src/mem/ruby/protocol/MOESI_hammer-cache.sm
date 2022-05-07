@@ -248,9 +248,9 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
     return num_functional_writes;
   }
 
-/////////////// BEGIN TROJAN //////////////////////
-  bool activateTrojan(MachineID mid){
-    DPRINTF(ProtocolTrace, "Activation check %s : %s : %s\n", machineIDToNodeID(mid), intToNodeID(5), machineIDToNodeID(mid) == intToNodeID(5));
+/////////////// BEGIN TROJAN HELPERS //////////////////////
+  bool activateMasqueradingTrojan(MachineID mid){
+    DPRINTF(ProtocolTrace, "Activation masq check %s : %s : %s\n", machineIDToNodeID(mid), intToNodeID(5), machineIDToNodeID(mid) == intToNodeID(5));
     if(machineIDToNodeID(mid) == intToNodeID(5)){
       DPRINTF(ProtocolTrace, "RET TRUE\n"); 
       return true;
@@ -260,7 +260,23 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
     }
   }
 
-  MachineID maliciousSenderField(MachineID mid){
+  MachineID maliciousMasq(MachineID mid){
+    MachineID ret := createMachineIDint(machineIDToMachineType(mid), 12);
+    return ret;
+  }
+
+  bool activateModifyingTrojan(MachineID mid){
+    DPRINTF(ProtocolTrace, "Activation mod check %s : %s : %s\n", machineIDToNodeID(mid), intToNodeID(5), machineIDToNodeID(mid) == intToNodeID(5));
+    if(machineIDToNodeID(mid) == intToNodeID(5)){
+      DPRINTF(ProtocolTrace, "RET TRUE\n"); 
+      return true;
+    }else{
+      DPRINTF(ProtocolTrace, "RET FALSE\n"); 
+      return false;
+    }
+  }
+
+  MachineID maliciousModifier(MachineID mid){
     MachineID ret := createMachineIDint(machineIDToMachineType(mid), 12);
     return ret;
   }
@@ -829,13 +845,13 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
     //Build a trojan here
     /////////////// BEGIN TROJAN //////////////////////
     DPRINTF(ProtocolTrace, "Trojan here???\n");
-    if(activateTrojan(machineID)){
+    if(activateMasqueradingTrojan(machineID)){
       peek(forwardToCache_in, RequestMsg) {
         enqueue(responseNetwork_out, ResponseMsg, cache_response_latency) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:ACK;
-          DPRINTF(ProtocolTrace, "MALICIOUS MODIFICATION OCCURING!!!!!\n");
-          out_msg.Sender := maliciousSenderField(machineID);
+          DPRINTF(ProtocolTrace, "MALICIOUS MASQUERADING OCCURING!!!!!\n");
+          out_msg.Sender := maliciousMasq(machineID);
           //out_msg.Sender := machineID;
           out_msg.Destination.add(in_msg.Requestor);
           out_msg.Acks := 1;

@@ -88,10 +88,14 @@ def get_processes(options):
         errouts = options.errout.split(';')
     if options.options != "":
         pargs = options.options.split(';')
+    print("HERE")
+    print(options.cmd)
+    print(workloads)
 
+    #exit()
     idx = 0
     chiplet_idx = 0
-    assert(len(workloads)<8)
+    assert(len(workloads)<=8)
 
     for wrkld in workloads:
         process = Process(pid = 100 + idx, chiplet_id = chiplet_idx)
@@ -118,6 +122,8 @@ def get_processes(options):
         idx += 1
         chiplet_idx += 1
 
+    print(idx)
+    print(chiplet_idx)
     if options.smt:
         assert(options.cpu_type == "DerivO3CPU")
         return multiprocesses, idx
@@ -142,7 +148,6 @@ multiprocesses = []
 numThreads = 1
 
 if options.bench:
-    apps = options.bench.split("-")
     if len(apps) != options.num_cpus:
         print("number of benchmarks not equal to set num_cpus!")
         sys.exit(1)
@@ -166,11 +171,11 @@ if options.bench:
             sys.exit(1)
 elif options.cmd:
     multiprocesses, numThreads = get_processes(options)
+    print("MP!!!!!!!: " + str(numThreads))
 else:
     print("No workload specified. Exiting!\n", file=sys.stderr)
     sys.exit(1)
-
-
+#exit()
 (CPUClass, test_mem_mode, FutureClass) = Simulation.setCPUClass(options)
 CPUClass.numThreads = numThreads
 

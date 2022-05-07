@@ -1,7 +1,7 @@
 BENCHMARK=$1
-GEM5_DIR=/home/grads/t/tapojyoti.mandal/gem5_garnet2 
-OUT_DIR=/home/grads/t/tapojyoti.mandal/gem5_garnet2/my_outdir/$BENCHMARK  
-SPEC_DIR=/home/grads/t/tapojyoti.mandal/spec2006
+GEM5_DIR=/home/grads/g/ginochacon/gem5_garnet2_CHIPS
+OUT_DIR=/home/grads/g/ginochacon/gem5_garnet2_CHIPS/my_outdir/$BENCHMARK  
+SPEC_DIR=/home/grads/g/ginochacon/spec_test
 
 if [[ "$BENCHMARK" == "perlbench" ]]; then
     RUN_DIR=$SPEC_DIR/benchspec/CPU2006/400.perlbench/run/run_base_test_amd64-m64-gcc43-nn.0000

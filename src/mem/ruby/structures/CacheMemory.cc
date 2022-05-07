@@ -228,7 +228,6 @@ CacheMemory::isTagPresent(Addr address) const
     assert(address == makeLineAddress(address));
     int64_t cacheSet = addressToCacheSet(address);
     int loc = findTagInSet(cacheSet, address);
-
     if (loc == -1) {
         // We didn't find the tag
         DPRINTF(RubyCache, "No tag match for address: %#x\n", address);

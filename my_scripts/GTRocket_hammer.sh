@@ -1,8 +1,7 @@
 BENCHMARK=$1
-GEM5_DIR=/home/grads/t/tapojyoti.mandal/SNI_Regressions/gem5_garnet2_perlbench
-OUT_DIR=/home/grads/t/tapojyoti.mandal/SNI_Regressions/gem5_garnet2_perlbench/my_outdir/$BENCHMARK  
-SPEC_DIR=/home/grads/t/tapojyoti.mandal/SNI_Regressions/spec2006
-
+GEM5_DIR=/home/grads/g/ginochacon/gem5_garnet2_CHIPS
+OUT_DIR=/home/grads/g/ginochacon/gem5_garnet2_CHIPS/my_outdir/$BENCHMARK
+SPEC_DIR=/home/grads/g/ginochacon/spec_test
 if [[ "$BENCHMARK" == "perlbench" ]]; then
     RUN_DIR=$SPEC_DIR/benchspec/CPU2006/400.perlbench/run/run_base_ref_amd64-m64-gcc43-nn.0000
     EXECUTABLE="perlbench_base.amd64-m64-gcc43-nn"
@@ -19,7 +18,7 @@ if [[ "$BENCHMARK" == "gcc" ]]; then
     INPUT="166.i -o 166.s" 
 fi
 if [[ "$BENCHMARK" == "bwaves" ]]; then 
-    RUN_DIR=$SPEC_DIR/benchspec/CPU2006/410.bzip2/run/run_base_ref_amd64-m64-gcc43-nn.0000
+    RUN_DIR=$SPEC_DIR/benchspec/CPU2006/410.bwaves/run/run_base_ref_amd64-m64-gcc43-nn.0000
     EXECUTABLE="bwaves_base.amd64-m64-gcc43-nn" 
     INPUT="" 
 fi
@@ -116,7 +115,7 @@ fi
 if [[ "$BENCHMARK" == "tonto" ]]; then
     RUN_DIR=$SPEC_DIR/benchspec/CPU2006/465.tonto/run/run_base_ref_amd64-m64-gcc43-nn.0000
     EXECUTABLE="tonto_base.amd64-m64-gcc43-nn"
-    INPUT=""    
+    INPUT=""
 fi
 if [[ "$BENCHMARK" == "lbm" ]]; then
     RUN_DIR=$SPEC_DIR/benchspec/CPU2006/470.lbm/run/run_base_ref_amd64-m64-gcc43-nn.0000
@@ -172,7 +171,11 @@ echo "===================================================================="
 echo "Benchmark: $BENCHMARK"
 #--debug-flags=RubySNI 
 
-cd $RUN_DIR
+#cd $RUN_DIR
+echo "PWD: "
+pwd
+echo "EXE"
+echo $RUN_DIR/$EXECUTABLE
 
 $GEM5_DIR/build/X86_MOESI_hammer/gem5.opt \
 -d $OUT_DIR \
@@ -193,9 +196,11 @@ $GEM5_DIR/configs/example/se.py \
 --link-width-bits=1024 \
 --vcs-per-vnet=4 \
 --topology=CHIPS_GTRocket_Mesh_hammer \
--c $EXECUTABLE \
--o "$INPUT" 
+-c "$RUN_DIR/$EXECUTABLE" \
+-o "$RUN_DIR/$INPUT"
 
+echo "$RUN_DIR/$EXECUTABLE"
+echo "$INPUT"
 # Print Stats
 echo
 echo "CHIPS Demo: Stats:"

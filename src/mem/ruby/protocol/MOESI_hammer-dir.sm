@@ -648,7 +648,7 @@ machine(MachineType:Directory, "AMD Hammer-like protocol")
     } else {
       tbe.Acks := 1;
     }
-  }   
+  }
 
   action(m_decrementNumberOfMessages, "m", desc="Decrement the number of messages for which we're waiting") {
     peek(responseToDir_in, ResponseMsg) {
