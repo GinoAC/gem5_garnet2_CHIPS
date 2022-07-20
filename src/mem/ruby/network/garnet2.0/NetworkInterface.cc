@@ -69,8 +69,8 @@ NetworkInterface::NetworkInterface(const Params *p)
         m_vc_allocator[i] = 0;
     }
     if(p->id == 64 || p->id == 65 || p->id == 66 || p->id == 67){
-        enSNI=true;
-        //enSNI=false;
+        //enSNI=true;
+        enSNI=false;
         //if(p->sni == 1){
         //    enSNI = true;
         //    DPRINTF(RubySNI, "Net_Intf: SNI Enabled at NI\n");      

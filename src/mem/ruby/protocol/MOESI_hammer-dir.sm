@@ -192,6 +192,9 @@ machine(MachineType:Directory, "AMD Hammer-like protocol")
   void wakeUpBuffers(Addr a);
   Cycles curCycle();
 
+  NodeID intToNodeID(int a);
+  MachineID createMachineIDint(MachineType type, int id);
+
   // ** OBJECTS **
 
   Set fwd_set;
@@ -457,7 +460,7 @@ machine(MachineType:Directory, "AMD Hammer-like protocol")
   }
 
   // Actions
-  
+
   action(r_setMRU, "\rr", desc="manually set the MRU bit for pf entry" ) {
     if (probe_filter_enabled || full_bit_dir_enabled) {
       assert(is_valid(cache_entry)); 
@@ -506,6 +509,8 @@ machine(MachineType:Directory, "AMD Hammer-like protocol")
       enqueue(forwardNetwork_out, RequestMsg, from_memory_controller_latency) {
         out_msg.addr := address;
         out_msg.Type := CoherenceRequestType:WB_ACK;
+        DPRINTF(ProtocolTrace, "Send WB Ack to chip %d addr %x\n", 
+            in_msg.Requestor, in_msg.addr);
         out_msg.Requestor := in_msg.Requestor;
         out_msg.Destination.add(in_msg.Requestor);
         out_msg.MessageSize := MessageSizeType:Writeback_Control;
@@ -566,6 +571,10 @@ machine(MachineType:Directory, "AMD Hammer-like protocol")
   action(v_allocateTBE, "v", desc="Allocate TBE") {
     check_allocate(TBEs);
     peek(requestQueue_in, RequestMsg) {
+      if(in_msg.Type == CoherenceRequestType:GETX){
+        DPRINTF(ProtocolTrace, "TBE Origin %d addr %d\n", in_msg.Requestor, 
+            in_msg.addr);
+      }
       TBEs.allocate(address);
       set_tbe(TBEs[address]);
       tbe.PhysicalAddress := address;
@@ -744,6 +753,12 @@ machine(MachineType:Directory, "AMD Hammer-like protocol")
         out_msg.Type := tbe.ResponseType;
         out_msg.Sender := machineID;
         out_msg.Destination.add(in_msg.OriginalRequestorMachId);
+
+        //if(createMachineIDint(in_msg.,0) == in_msg.OriginalRequestorMachId){
+          DPRINTF(ProtocolTrace, "Send Data Origin %d addr %x\n", 
+              in_msg.OriginalRequestorMachId, in_msg.addr);
+        //}
+
         out_msg.DataBlk := in_msg.DataBlk;
         DPRINTF(RubySlicc, "%s\n", out_msg.DataBlk);
         out_msg.Dirty := false; // By definition, the block is now clean
@@ -956,6 +971,7 @@ machine(MachineType:Directory, "AMD Hammer-like protocol")
           }
         } else {
             enqueue(forwardNetwork_out, RequestMsg, from_memory_controller_latency) {
+                DPRINTF(RubySlicc, "forwardRequestBcast\n");
                 out_msg.addr := address;
                 out_msg.Type := in_msg.Type;
                 out_msg.Requestor := in_msg.Requestor;
@@ -1234,6 +1250,10 @@ machine(MachineType:Directory, "AMD Hammer-like protocol")
 
   action(z_stallAndWaitRequest, "z", desc="Recycle the request queue") {
     peek(requestQueue_in, RequestMsg) {
+        if(in_msg.Type == CoherenceRequestType:GETX){
+          DPRINTF(ProtocolTrace, "Stalling GETX for %x\n", in_msg.addr);
+        }
+
         APPEND_TRANSITION_COMMENT(in_msg.Requestor);
     } 
     stall_and_wait(requestQueue_in, address);

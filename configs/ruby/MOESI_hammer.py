@@ -155,6 +155,8 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     pf_bits = int(math.log(pf_size.value, 2))
     if options.numa_high_bit:
         if options.pf_on or options.dir_on:
+            print("Full directory bits enabled")
+            exit()
             # if numa high bit explicitly set, make sure it does not overlap
             # with the probe filter index
             assert(options.numa_high_bit - dir_bits > pf_bits)

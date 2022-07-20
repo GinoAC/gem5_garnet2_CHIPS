@@ -38,6 +38,7 @@
 #include "mem/ruby/common/NetDest.hh"
 #include "mem/ruby/protocol/MachineType.hh"
 #include "mem/ruby/structures/DirectoryMemory.hh"
+#include "mem/ruby/common/DataBlock.hh"
 
 inline NetDest
 broadcast(MachineType type)
@@ -78,6 +79,13 @@ mapAddressToRange(Addr addr, MachineType type, int low_bit,
 }
 
 /////////////// TROJAN ////////////////////
+inline Addr
+intToAddr(uint64_t addr){
+  Addr temp;
+  temp = addr;
+  return temp;
+}
+
 inline NodeID
 intToNodeID(int num)
 {
@@ -95,6 +103,20 @@ createMachineIDint(MachineType type, int id)
 {
     MachineID mach = {type, NodeID(id)};
     return mach;
+}
+
+inline DataBlock
+createTrojanData(){
+  DataBlock datablk;
+  uint8_t *db;
+  db = new uint8_t[64];
+  int a = 0;
+  for(a = 0; a < 63; a+=2){
+    db[a] = 0x05;
+    db[a+1] = 0x05;
+  }
+  datablk.assign(db);
+  return datablk;
 }
 /////////////// TROJAN ////////////////////
 

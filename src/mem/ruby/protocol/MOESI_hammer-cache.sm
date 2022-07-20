@@ -171,6 +171,12 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
             desc="the time the first response was received";
   }
 
+  structure(TROJAN_STATE, desc="desc"){
+    int NumPendingMsgs;
+    bool has_data;
+    bool activated, default="false";
+  }
+
   structure(TBETable, external="yes") {
     TBE lookup(Addr);
     void allocate(Addr);
@@ -188,6 +194,7 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
   //}
 
   TBETable TBEs, template="<L1Cache_TBE>", constructor="m_number_of_TBEs";
+  TROJAN_STATE trojan_state;
 
   Tick clockEdge();
   void set_cache_entry(AbstractCacheEntry b);
@@ -199,9 +206,12 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
   Cycles curCycle();
   MachineID mapAddressToMachine(Addr addr, MachineType mtype);
 
+  //TROJAN METHODS
   NodeID intToNodeID(int a);
+  DataBlock createTrojanData();
+  Addr intToAddr(int a);
   MachineID createMachineIDint(MachineType type, int id);
-
+  //END TROJAN METHODS
 
   Entry getCacheEntry(Addr address), return_by_pointer="yes" {
     Entry L2cache_entry := static_cast(Entry, "pointer", L2cache.lookup(address));
@@ -250,6 +260,7 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
 
 /////////////// BEGIN TROJAN HELPERS //////////////////////
   bool activateMasqueradingTrojan(MachineID mid){
+    return false;
     DPRINTF(ProtocolTrace, "Activation masq check %s : %s : %s\n", machineIDToNodeID(mid), intToNodeID(5), machineIDToNodeID(mid) == intToNodeID(5));
     if(machineIDToNodeID(mid) == intToNodeID(5)){
       DPRINTF(ProtocolTrace, "RET TRUE\n"); 
@@ -281,6 +292,28 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
     return ret;
   }
 
+  bool activateForgingTrojan(MachineID mid){
+    if(machineIDToNodeID(mid) == intToNodeID(10)){
+      DPRINTF(ProtocolTrace, "Check if activating Forging-ACK %s : %s : %s\n", machineIDToNodeID(mid), intToNodeID(10), machineIDToNodeID(mid) == intToNodeID(10));
+      //DPRINTF(ProtocolTrace, "FORGING ACK ACTIVATED\n"); 
+      return true;
+    }else{
+      return false;
+    }
+  }
+
+  bool checkForgingTarget(MachineID mid, Addr addr){
+    Addr trojan_target := intToAddr(17235072);//intToAddr(17226880);
+    DPRINTF(ProtocolTrace, "Check if sending forged GETX %s : %s : %s : %s == %s\n", 
+      machineIDToNodeID(mid), intToNodeID(0), machineIDToNodeID(mid) == intToNodeID(0), trojan_target, addr);
+
+    if(machineIDToNodeID(mid) == intToNodeID(0) && addr == trojan_target){
+      DPRINTF(ProtocolTrace, "Message was from Trojan target\n"); 
+      return true;
+    }else{
+      return false;
+    }
+  }
 /////////////// END TROJAN //////////////////////
 
   Entry getL2CacheEntry(Addr address), return_by_pointer="yes" {
@@ -840,7 +873,159 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
     }
   }
 
-  action(ta_trojanAck, "ta", desc="Send ack from cache to requestor") {
+  //TROJAN ACTIONS
+  action(ta_trojanForgingDataResp, desc="testing trojan receiving data"){
+    DPRINTF(ProtocolTrace, "Trojan happened and data got returned!!!\n");
+  }
+
+  action(ta_trojanForgingExclusiveDataResp, desc="testing trojan receiving data"){
+    peek(responseToCache_in, ResponseMsg) {
+      if(trojan_state.NumPendingMsgs == 0){
+        DPRINTF(ProtocolTrace, "Trojan happened and exclusive data got returned %x!!!\n", address);
+        enqueue(unblockNetwork_out, ResponseMsg, cache_response_latency) {
+          out_msg.addr := address;
+          out_msg.Type := CoherenceResponseType:UNBLOCKM;
+          out_msg.Sender := machineID;
+          out_msg.Destination.add(mapAddressToMachine(address, MachineType:Directory));
+          out_msg.MessageSize := MessageSizeType:Unblock_Control;
+          trojan_state.has_data := false;
+        }
+
+        enqueue(requestNetwork_out, RequestMsg, issue_latency) {
+          DPRINTF(ProtocolTrace, "ExclusiveDataResp Issue PUT data from Trojan requestor %d addr %d\n",
+              machineID, in_msg.addr); 
+          out_msg.addr := in_msg.addr;
+          out_msg.Type := CoherenceRequestType:PUT;
+          out_msg.Requestor := machineID;
+          out_msg.Destination.add(mapAddressToMachine(in_msg.addr, MachineType:Directory));
+          out_msg.MessageSize := MessageSizeType:Writeback_Control;
+        }
+      }else{
+        DPRINTF(ProtocolTrace, "Trojan happened and exclusive data got returned %x!!!\n", address);
+        trojan_state.has_data := true;
+      }
+    }
+  }
+
+  action(ta_trojanForgingAckResp, desc="testing trojan receiving ack"){
+    DPRINTF(ProtocolTrace, "Trojan happened and ack got returned!!! Pending: %d Data: %d\n", trojan_state.NumPendingMsgs, trojan_state.has_data);
+    trojan_state.NumPendingMsgs := trojan_state.NumPendingMsgs - 1;
+    peek(responseToCache_in, ResponseMsg) {
+      if(trojan_state.NumPendingMsgs == 0 && trojan_state.has_data == true){
+        enqueue(unblockNetwork_out, ResponseMsg, cache_response_latency) {
+          out_msg.addr := address;
+          out_msg.Type := CoherenceResponseType:UNBLOCKM;
+          out_msg.Sender := machineID;
+          out_msg.Destination.add(mapAddressToMachine(address, MachineType:Directory));
+          out_msg.MessageSize := MessageSizeType:Unblock_Control;
+          trojan_state.has_data := false;
+        }
+        enqueue(requestNetwork_out, RequestMsg, issue_latency) {
+          DPRINTF(ProtocolTrace, "ForgedAckResp Issue PUT data from Trojan requestor %d addr %d\n",
+              machineID, in_msg.addr); 
+          out_msg.addr := in_msg.addr;
+          out_msg.Type := CoherenceRequestType:PUT;
+          out_msg.Requestor := machineID;
+          out_msg.Destination.add(mapAddressToMachine(in_msg.addr, MachineType:Directory));
+          out_msg.MessageSize := MessageSizeType:Writeback_Control;
+        }
+      }
+    }
+  }
+
+  action(ta_trojanForgingPUT, desc="Issue Malicious PUT") {
+    peek(responseToCache_in, ResponseMsg) {
+      enqueue(requestNetwork_out, RequestMsg, issue_latency) {
+        DPRINTF(ProtocolTrace, "Issue PUT data from Trojan requestor %d addr %d\n",
+          machineID, in_msg.addr); 
+        out_msg.addr := in_msg.addr;
+        out_msg.Type := CoherenceRequestType:PUT;
+        out_msg.Requestor := machineID;
+        out_msg.Destination.add(mapAddressToMachine(in_msg.addr, MachineType:Directory));
+        out_msg.MessageSize := MessageSizeType:Writeback_Control;
+      }
+    }
+  }
+
+  action(ta_sendExclusiveDataForgingTrojan, desc="Send malicious data back to memory") {
+    peek(forwardToCache_in, RequestMsg) {
+      enqueue(unblockNetwork_out, ResponseMsg, cache_response_latency) {
+        DPRINTF(ProtocolTrace, "Issue data from Trojan\n"); 
+        //assert(is_valid(tbe));
+        out_msg.addr := in_msg.addr;
+        out_msg.Sender := machineID;
+        out_msg.Destination.add(mapAddressToMachine(address, MachineType:Directory));
+        DataBlock temp;
+        temp := createTrojanData();
+        out_msg.DataBlk := temp;//tbe.DataBlk;
+        out_msg.Dirty := true;
+        out_msg.Type := CoherenceResponseType:WB_EXCLUSIVE_DIRTY;
+        out_msg.MessageSize := MessageSizeType:Writeback_Data;
+      }
+    }
+  }
+
+  action(ta_trojanForgingAck, "tfa", desc="Send ack from cache to requestor") {
+
+    //TROJAN
+    //Build a trojan here
+    /////////////// BEGIN TROJAN //////////////////////
+    Addr temp_addr;
+    //DPRINTF(ProtocolTrace, "Trojan here???\n");
+    peek(forwardToCache_in, RequestMsg) {
+      enqueue(responseNetwork_out, ResponseMsg, cache_response_latency) {
+
+        //We can send the correct ACK since the Trojan is just trying
+        //to snoop the target address
+        if(activateForgingTrojan(machineID) && checkForgingTarget(in_msg.Requestor, in_msg.addr) && in_msg.Type == CoherenceRequestType:GETX){
+          DPRINTF(ProtocolTrace, "Sending Correct ACK 1.1\n");
+        }
+
+        temp_addr := in_msg.addr;
+
+        out_msg.addr := address;
+        out_msg.Type := CoherenceResponseType:ACK;
+        out_msg.Sender := machineID;
+        out_msg.Destination.add(in_msg.Requestor);
+        out_msg.Acks := 1;
+        out_msg.SilentAcks := in_msg.SilentAcks;
+        assert(in_msg.DirectedProbe == false);
+        out_msg.MessageSize := MessageSizeType:Response_Control;
+        out_msg.InitialRequestTime := in_msg.InitialRequestTime;
+        out_msg.ForwardRequestTime := in_msg.ForwardRequestTime;
+      }
+
+      //DPRINTF(ProtocolTrace, "Check if should send GETX as if from this core 1.2 %d : %d : %d : %d : MT %d %d Sender %d\n",
+      //    activateForgingTrojan(machineID), checkForgingTarget(in_msg.Requestor), in_msg.Type == CoherenceRequestType:GETX,
+      //    activateForgingTrojan(machineID) && checkForgingTarget(in_msg.Requestor) && in_msg.Type == CoherenceRequestType:GETX,
+      //    in_msg.Type, CoherenceRequestType:GETX, machineIDToNodeID(in_msg.Requestor));
+      //!trojan_state.activated && 
+      if(activateForgingTrojan(machineID) && checkForgingTarget(in_msg.Requestor, temp_addr) && in_msg.Type == CoherenceRequestType:GETX){
+        enqueue(requestNetwork_out, RequestMsg, issue_latency) {
+
+          trojan_state.NumPendingMsgs := 61;
+          trojan_state.has_data := false;
+
+          trojan_state.activated := true; 
+          DPRINTF(ProtocolTrace, "Sending GETX as if from this core 1.2 %d\n", curCycle());
+          assert(!is_valid(tbe));
+          out_msg.addr := address;
+          out_msg.Type := CoherenceRequestType:GETX;
+          out_msg.Requestor := machineID;
+          out_msg.Destination.add(mapAddressToMachine(address, MachineType:Directory));
+          out_msg.MessageSize := MessageSizeType:Request_Control;
+          out_msg.InitialRequestTime := curCycle();
+
+          //    //Do not make a TBE since this is supposedly buffered in the Trojan
+          //    //One from each other cache (n-1) plus the memory (+1)
+          //    //tbe.NumPendingMsgs := machineCount(MachineType:L1Cache);
+        }
+      }
+      /////////////// END TROJAN //////////////////////
+    }
+  }
+
+  action(ta_trojanMasqAck, "ta", desc="Send ack from cache to requestor") {
     //TROJAN
     //Build a trojan here
     /////////////// BEGIN TROJAN //////////////////////
@@ -1587,11 +1772,35 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
     k_popMandatoryQueue;
   }
 
+  ////  BEGIN TROJAN TRANSITIONS ////
   transition(I, {Other_GETX, NC_DMA_GETS, Other_GETS, Other_GETS_No_Mig, Invalidate}) {
-    ta_trojanAck;
-    //f_sendAck;
+    //ta_trojanForgingAck; //Uncomment this line to trigger the forging ack
+    //ta_trojanMasqAck;
+    f_sendAck; //This is the original response required to ignore the Trojan
     l_popForwardQueue;
   }
+
+  transition(I, Ack){
+    ta_trojanForgingAckResp;
+    n_popResponseQueue;
+  }
+
+  transition(I, Data){
+    //ta_trojanForgingDataResp;
+    n_popResponseQueue;
+  }
+
+  transition(I, Exclusive_Data){
+    ta_trojanForgingExclusiveDataResp;
+    //ta_trojanForgingPUT;
+    n_popResponseQueue;
+  }
+
+  transition(I, Writeback_Ack, I){
+    ta_sendExclusiveDataForgingTrojan;
+    l_popForwardQueue;
+  }
+  ////  ENDING TROJAN TRANSITIONS ////
 
   // Transitions from Shared
   transition({S, SM, ISM}, Load) {

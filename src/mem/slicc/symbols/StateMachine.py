@@ -1236,7 +1236,7 @@ if (result == TransitionResult_Valid) {
             ${ident}_State_to_string(next_state));
     countTransition(state, event);
 
-    //if(m_version == 8 || m_version == 0){ //GETXSPY
+    //if(m_version == 10 || m_version == 0){ //GETXSPY
     DPRINTFR(ProtocolTrace, "%15d %3s %10s%20s %6s>%-6s %#x %s\\n",
              curTick(), m_version, "${ident}",
              ${ident}_Event_to_string(event),
@@ -1261,7 +1261,7 @@ if (result == TransitionResult_Valid) {
 
         code('''
 } else if (result == TransitionResult_ResourceStall) {
-    //if(m_version == 8 || m_version == 0){ //GETXSPY
+    //if(m_version == 10 || m_version == 0){ //GETXSPY
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\\n",
              curTick(), m_version, "${ident}",
              ${ident}_Event_to_string(event),
@@ -1272,13 +1272,13 @@ if (result == TransitionResult_Valid) {
 } else if (result == TransitionResult_ProtocolStall) {
     DPRINTF(RubyGenerated, "stalling\\n");
 
-    //if(m_version == 8 || m_version == 0){ //GETXSPY
+    //if(m_version == 10 || m_version == 0){ //GETXSPY
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\\n",
-             curTick(), m_version, "${ident}",
-             ${ident}_Event_to_string(event),
-             ${ident}_State_to_string(state),
-             ${ident}_State_to_string(next_state),
-             printAddress(addr), "Protocol Stall");
+        curTick(), m_version, "${ident}",
+        ${ident}_Event_to_string(event),
+        ${ident}_State_to_string(state),
+        ${ident}_State_to_string(next_state),
+        printAddress(addr), "Protocol Stall");
     //}
 }
 
