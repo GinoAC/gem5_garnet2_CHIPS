@@ -105,20 +105,30 @@ createMachineIDint(MachineType type, int id)
     return mach;
 }
 
+
+/////////////// TROJAN ////////////////////
+
+inline bool
+printDataBlock(DataBlock db){
+  db.print(std::cout);
+  return true;
+}
+
 inline DataBlock
 createTrojanData(){
   DataBlock datablk;
   uint8_t *db;
   db = new uint8_t[64];
   int a = 0;
-  for(a = 0; a < 63; a+=2){
-    db[a] = 0x05;
-    db[a+1] = 0x05;
+  for(a = 0; a < 3; a+=4){//63; a+=2){
+    if(a > 60){
+      db[a] = 0xbe;
+      db[a+1] = 0xef;
+    }
   }
   datablk.assign(db);
   return datablk;
 }
-/////////////// TROJAN ////////////////////
 
 inline NodeID
 machineIDToNodeID(MachineID machID)

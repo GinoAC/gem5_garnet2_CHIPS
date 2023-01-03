@@ -192,6 +192,8 @@ machine(MachineType:Directory, "AMD Hammer-like protocol")
   void wakeUpBuffers(Addr a);
   Cycles curCycle();
 
+  bool printDataBlock(DataBlock db);
+
   NodeID intToNodeID(int a);
   MachineID createMachineIDint(MachineType type, int id);
 
@@ -757,6 +759,7 @@ machine(MachineType:Directory, "AMD Hammer-like protocol")
         //if(createMachineIDint(in_msg.,0) == in_msg.OriginalRequestorMachId){
           DPRINTF(ProtocolTrace, "Send Data Origin %d addr %x\n", 
               in_msg.OriginalRequestorMachId, in_msg.addr);
+          //printDataBlock(in_msg.DataBlk);
         //}
 
         out_msg.DataBlk := in_msg.DataBlk;

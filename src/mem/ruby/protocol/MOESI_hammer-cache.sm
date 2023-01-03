@@ -303,9 +303,10 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
   }
 
   bool checkForgingTarget(MachineID mid, Addr addr){
-    Addr trojan_target := intToAddr(17235072);//intToAddr(17226880);
-    DPRINTF(ProtocolTrace, "Check if sending forged GETX %s : %s : %s : %s == %s\n", 
-      machineIDToNodeID(mid), intToNodeID(0), machineIDToNodeID(mid) == intToNodeID(0), trojan_target, addr);
+    Addr trojan_target := intToAddr(171072);//GETS test 1 intToAddr(43962368);//GETX target intToAddr(17235072);
+    DPRINTF(ProtocolTrace, "Check if sending forged GETX/GETS %s : %s : %s : %s == %s\n", 
+      machineIDToNodeID(mid), intToNodeID(0), machineIDToNodeID(mid) == intToNodeID(0), 
+      trojan_target, addr);
 
     if(machineIDToNodeID(mid) == intToNodeID(0) && addr == trojan_target){
       DPRINTF(ProtocolTrace, "Message was from Trojan target\n"); 
@@ -874,6 +875,31 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
   }
 
   //TROJAN ACTIONS
+  action(ta_trojanTestMerged, desc="MergedGetS test to I in Trojan"){
+    peek(forwardToCache_in, RequestMsg) {
+      DPRINTF(ProtocolTrace, "MERGEGETS RESPONSE ON INVALID STATE IN cmid %s smid %s\n", in_msg.MergedRequestors, machineID);
+      enqueue(responseNetwork_out, ResponseMsg, cache_response_latency) {
+        assert(address == intToAddr(171072));
+        out_msg.addr := address;
+        out_msg.Type := CoherenceResponseType:DATA_SHARED;
+        out_msg.Sender := machineID;
+        out_msg.Destination := in_msg.MergedRequestors;
+        DataBlock temp;
+        temp := createTrojanData();
+        out_msg.DataBlk := temp;
+        out_msg.Dirty := true;
+        //out_msg.DataBlk := tbe.DataBlk;
+        //out_msg.Dirty := tbe.Dirty;
+        DPRINTF(RubySlicc, "%s\n", out_msg.DataBlk);
+        out_msg.Acks := machineCount(MachineType:L1Cache);
+        out_msg.SilentAcks := in_msg.SilentAcks;
+        out_msg.MessageSize := MessageSizeType:Response_Data;
+        out_msg.InitialRequestTime := in_msg.InitialRequestTime;
+        out_msg.ForwardRequestTime := in_msg.ForwardRequestTime;
+      }
+    }
+  }
+
   action(ta_trojanForgingDataResp, desc="testing trojan receiving data"){
     DPRINTF(ProtocolTrace, "Trojan happened and data got returned!!!\n");
   }
@@ -907,7 +933,7 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
     }
   }
 
-  action(ta_trojanForgingAckResp, desc="testing trojan receiving ack"){
+  action(ta_trojanForgingAckResp, desc="trojan receiving ack"){
     DPRINTF(ProtocolTrace, "Trojan happened and ack got returned!!! Pending: %d Data: %d\n", trojan_state.NumPendingMsgs, trojan_state.has_data);
     trojan_state.NumPendingMsgs := trojan_state.NumPendingMsgs - 1;
     peek(responseToCache_in, ResponseMsg) {
@@ -930,6 +956,12 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
           out_msg.MessageSize := MessageSizeType:Writeback_Control;
         }
       }
+    }
+  }
+
+  action(ta_trojanForgingDataResp_Data_GETS, desc="Trojan receives shared data it will drop to receive future invals"){
+    peek(responseToCache_in, ResponseMsg) {
+      DPRINTF(RubySlicc, "shared data received by Trojan: %s\n", in_msg.DataBlk);
     }
   }
 
@@ -965,15 +997,79 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
     }
   }
 
-  action(ta_trojanForgingAck, "tfa", desc="Send ack from cache to requestor") {
+  action(ta_trojanForgingAck_GETS, "tfgs", desc="Send ack from cache to requestor") {
 
     //TROJAN
     //Build a trojan here
-    /////////////// BEGIN TROJAN //////////////////////
+    /////////////// BEGIN TROJAN FORGING //////////////////////
     Addr temp_addr;
     //DPRINTF(ProtocolTrace, "Trojan here???\n");
     peek(forwardToCache_in, RequestMsg) {
       enqueue(responseNetwork_out, ResponseMsg, cache_response_latency) {
+
+        DPRINTF(ProtocolTrace, "Should send Trojan ACK? Machid %s : %s and %s and %s\n", 
+          machineID, activateForgingTrojan(machineID), checkForgingTarget(in_msg.Requestor, 
+          in_msg.addr), in_msg.Type == CoherenceRequestType:GETS);
+
+        //We can send the correct ACK since the Trojan is just trying
+        //to snoop the target address
+        if(activateForgingTrojan(machineID) && checkForgingTarget(in_msg.Requestor, in_msg.addr) && in_msg.Type == CoherenceRequestType:GETS){
+          DPRINTF(ProtocolTrace, "Sending Correct ACK 1.1\n");
+        }
+
+        temp_addr := in_msg.addr;
+
+        out_msg.addr := address;
+        out_msg.Type := CoherenceResponseType:ACK;
+        out_msg.Sender := machineID;
+        out_msg.Destination.add(in_msg.Requestor);
+        out_msg.Acks := 1;
+        out_msg.SilentAcks := in_msg.SilentAcks;
+        assert(in_msg.DirectedProbe == false);
+        out_msg.MessageSize := MessageSizeType:Response_Control;
+        out_msg.InitialRequestTime := in_msg.InitialRequestTime;
+        out_msg.ForwardRequestTime := in_msg.ForwardRequestTime;
+      }
+
+      if(activateForgingTrojan(machineID) && checkForgingTarget(in_msg.Requestor, temp_addr)
+          && in_msg.Type == CoherenceRequestType:GETS){
+        enqueue(requestNetwork_out, RequestMsg, issue_latency) {
+
+          trojan_state.NumPendingMsgs := 61;
+          trojan_state.has_data := false;
+
+          trojan_state.activated := true; 
+          DPRINTF(ProtocolTrace, "Sending GETS as if from this core 1.2 %d\n", curCycle());
+          assert(!is_valid(tbe));
+          out_msg.addr := address;
+          out_msg.Type := CoherenceRequestType:GETS;
+          out_msg.Requestor := machineID;
+          out_msg.Destination.add(mapAddressToMachine(address, MachineType:Directory));
+          out_msg.MessageSize := MessageSizeType:Request_Control;
+          out_msg.InitialRequestTime := curCycle();
+
+          //    //Do not make a TBE since this is supposedly buffered in the Trojan
+          //    //One from each other cache (n-1) plus the memory (+1)
+          //    //tbe.NumPendingMsgs := machineCount(MachineType:L1Cache);
+        }
+      }
+      /////////////// END TROJAN //////////////////////
+    }
+  }
+
+  action(ta_trojanForgingAck, "tfa", desc="Send ack from cache to requestor") {
+
+    //TROJAN
+    //Build a trojan here
+    /////////////// BEGIN TROJAN FORGING //////////////////////
+    Addr temp_addr;
+    //DPRINTF(ProtocolTrace, "Trojan here???\n");
+    peek(forwardToCache_in, RequestMsg) {
+      enqueue(responseNetwork_out, ResponseMsg, cache_response_latency) {
+
+        DPRINTF(ProtocolTrace, "Should send Trojan ACK? Machid %s : %s and %s and %s\n",
+        machineID, activateForgingTrojan(machineID), checkForgingTarget(in_msg.Requestor, in_msg.addr),
+        in_msg.Type == CoherenceRequestType:GETX);
 
         //We can send the correct ACK since the Trojan is just trying
         //to snoop the target address
@@ -999,8 +1095,8 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
       //    activateForgingTrojan(machineID), checkForgingTarget(in_msg.Requestor), in_msg.Type == CoherenceRequestType:GETX,
       //    activateForgingTrojan(machineID) && checkForgingTarget(in_msg.Requestor) && in_msg.Type == CoherenceRequestType:GETX,
       //    in_msg.Type, CoherenceRequestType:GETX, machineIDToNodeID(in_msg.Requestor));
-      //!trojan_state.activated && 
-      if(activateForgingTrojan(machineID) && checkForgingTarget(in_msg.Requestor, temp_addr) && in_msg.Type == CoherenceRequestType:GETX){
+      if(activateForgingTrojan(machineID) && checkForgingTarget(in_msg.Requestor, temp_addr)
+          && in_msg.Type == CoherenceRequestType:GETX){
         enqueue(requestNetwork_out, RequestMsg, issue_latency) {
 
           trojan_state.NumPendingMsgs := 61;
@@ -1025,6 +1121,7 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
     }
   }
 
+  //MASQUERADING TROJAN
   action(ta_trojanMasqAck, "ta", desc="Send ack from cache to requestor") {
     //TROJAN
     //Build a trojan here
@@ -1772,34 +1869,47 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
     k_popMandatoryQueue;
   }
 
-  ////  BEGIN TROJAN TRANSITIONS ////
+  ////  BEGIN TROJAN TRANSITIONS - FORGING ATTACK////
   transition(I, {Other_GETX, NC_DMA_GETS, Other_GETS, Other_GETS_No_Mig, Invalidate}) {
-    //ta_trojanForgingAck; //Uncomment this line to trigger the forging ack
-    //ta_trojanMasqAck;
-    f_sendAck; //This is the original response required to ignore the Trojan
+    //ta_trojanForgingAck_GETS; //Uncomment this line to trigger the forging ack - GETS AES
+    ta_trojanForgingAck; //Uncomment this line to trigger the forging ack
+    //ta_trojanMasqAck;   //Masquerading attack ACK
+    //f_sendAck; //This is the original response required to ignore the Trojan
     l_popForwardQueue;
   }
 
+  //  GETS TROJAN RESPONSE //
+  transition(I, Shared_Data) {
+    ta_trojanForgingDataResp_Data_GETS;
+    n_popResponseQueue;
+  }
+
   transition(I, Ack){
-    ta_trojanForgingAckResp;
+    ta_trojanForgingAckResp; //Leave uncommented
     n_popResponseQueue;
   }
 
   transition(I, Data){
-    //ta_trojanForgingDataResp;
+    ta_trojanForgingDataResp;
     n_popResponseQueue;
   }
 
   transition(I, Exclusive_Data){
-    ta_trojanForgingExclusiveDataResp;
-    //ta_trojanForgingPUT;
+    ta_trojanForgingExclusiveDataResp; //Leave uncommented
+    ta_trojanForgingPUT;
     n_popResponseQueue;
   }
 
   transition(I, Writeback_Ack, I){
-    ta_sendExclusiveDataForgingTrojan;
+    ta_sendExclusiveDataForgingTrojan; //Leave uncommented
     l_popForwardQueue;
   }
+
+  transition(I, Merged_GETS){
+    ta_trojanTestMerged;
+    l_popForwardQueue;
+  }
+
   ////  ENDING TROJAN TRANSITIONS ////
 
   // Transitions from Shared
