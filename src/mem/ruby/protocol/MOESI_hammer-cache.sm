@@ -1872,9 +1872,9 @@ machine(MachineType:L1Cache, "AMD Hammer-like protocol")
   ////  BEGIN TROJAN TRANSITIONS - FORGING ATTACK////
   transition(I, {Other_GETX, NC_DMA_GETS, Other_GETS, Other_GETS_No_Mig, Invalidate}) {
     //ta_trojanForgingAck_GETS; //Uncomment this line to trigger the forging ack - GETS AES
-    ta_trojanForgingAck; //Uncomment this line to trigger the forging ack
+    //ta_trojanForgingAck; //Uncomment this line to trigger the forging ack
     //ta_trojanMasqAck;   //Masquerading attack ACK
-    //f_sendAck; //This is the original response required to ignore the Trojan
+    f_sendAck; //This is the original response required to ignore the Trojan
     l_popForwardQueue;
   }
 
